@@ -94,10 +94,12 @@ Client/server architecture, both components written in **Rust**:
 
 **The CLI is COMPLETELY AI-agent-oriented.** Its entire architecture — from command structure to how the help is organised — must be designed and optimised to be operated by AI agents such as Claude Code. Treat AI agents as the primary user of the CLI in every design decision.
 
+Users: registration and login are delegated to an external Identity Provider via **OIDC** (vendor not yet defined). Each user has a profile keyed by the IdP-provided id, with `name` and `email` copied from the IdP once, when the profile is created (never re-read afterwards — only the IdP user id bridges the two), plus planner-only fields such as `photo`; editing the profile changes only planner, never the IdP. Users, and the user ↔ project relationship, are managed in the central `planner` database. Per-project permissions are fixed **roles**: `owner` (maintains the project, including its settings), `member` (uses the project — WIs, comments, etc. — but cannot change its settings), `viewer` (read-only). The platform administrator has full privileges (projects, users, roles, access to every project).
+
 CLI authentication: the CLI uses a **token** issued on the platform's WEBSITE (GUI) on behalf of the authenticated user, so the CLI acts on that user's behalf (even when operated by an AI agent).
 - Tokens expire (default 30 days, configurable at issue time) and can be revoked; validity is always checked server-side.
 - A user can have several active tokens at once and revoke each individually.
-- Each token can have different permissions per project; a token has only the permissions granted to it, never more than the user's own permissions in that project.
+- At issue time, the user specifies per project which operations the token may perform; a token has only those permissions, never more than the user's own role in that project.
 - On installation the CLI generates a unique `DEVICE-ID`, sent with every WEB API request: a random 24-character string of uppercase letters, lowercase letters and digits (`[A-Za-z0-9]{24}`).
 - Tokens are bound to a device: issuing a token **requires** its `DEVICE-ID`; on each request the server validates the token together with the `DEVICE-ID` (they must match).
 - The `DEVICE-ID` also identifies the request's origin: every change made through the CLI (WIs, comments, etc.) stays attributed to the user; the `DEVICE-ID` is recorded **only in the project's audit log** (never as a field of WIs, comments or other domain entities).

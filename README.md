@@ -211,6 +211,25 @@ Data is persisted in **MariaDB** (see [Database and multiple projects](#database
 
 The CLI is **entirely oriented towards AI agents**. Its whole architecture — from how commands are structured to how the help is organised — is designed and optimised to be operated by AI agents such as **Claude Code**.
 
+### Users
+
+- **Registration and login are delegated** to an external **Identity Provider (IdP)** using **OpenID Connect (OIDC)**; planner does not handle them itself. The IdP vendor is not yet defined.
+- Each user has a **profile** in planner, keyed by the identifier provided by the IdP. The profile holds:
+  - `name` and `email`, **copied from the IdP once**, when the planner profile is created;
+  - additional planner-only fields, such as `photo`.
+- After the profile is created, planner **never reads the IdP's profile data again**: the only link between the two is the user's **IdP id**.
+- Profile fields can be edited in planner; edits change **only the planner profile** and are never propagated to the IdP.
+- Users are managed in the central **`planner`** database.
+- The relationship between users and projects is established in the central `planner` database. A user's permissions in a project are given by one of these fixed **roles**:
+
+| Role | Permissions |
+|------|-------------|
+| `owner` | Maintains the project, including the project's own settings. |
+| `member` | Uses the project (maintains Work Items, comments, etc.), but cannot change the project's settings. |
+| `viewer` | Read-only: can consult everything, but cannot modify anything. |
+
+- The **platform administrator** has full privileges and can do anything on the platform: create and delete projects, manage users, assign roles in any project, and access every project.
+
 ### CLI authentication
 
 The CLI authenticates with a **token** issued on the platform's **WEBSITE (GUI)** on behalf of the authenticated user. With this token, the CLI operates on that user's behalf — even when it is driven by an AI agent.
@@ -218,7 +237,7 @@ The CLI authenticates with a **token** issued on the platform's **WEBSITE (GUI)*
 - **Expiry** — each token has an expiry date: 30 days by default, configurable when the token is issued.
 - **Revocation** — a token can be revoked at any time. Validity (expiry and revocation) is always checked **server-side**.
 - **Multiple tokens** — a user can have several active tokens at the same time, and revoke each one individually.
-- **Per-project permissions** — each token can have different permissions in each project. A token has only the permissions granted to it, and those can never exceed the user's own permissions in that project.
+- **Per-project permissions** — when a token is issued, the user specifies, for each project, **which operations** can be performed with it. A token has only the permissions granted to it, and those can never exceed the user's own role in that project.
 
 ### Device ID
 
