@@ -20,8 +20,10 @@ Base data structure shared by every WI, regardless of type:
 - `kind` — WI type (required): `epic`, `feature`, `userstory`, `task`, `defect`, `refactoring`, `spike`, `issue`.
 - `title` — title that identifies the WI (required).
 - `desc` — description of the work the WI is meant to address (required).
+- `planstart` — planned start date.
+- `planend` — planned end date.
 - `starteddt` — start date (optional).
-- `closeddt` — date on which the WI was completed; empty until completion.
+- `closeddt` — date on which the WI was completed; empty until completion, cleared on reopen.
 
 **Strategic planning types** (high level): Epic and Feature. They group large volumes of work and align development with business goals.
 
@@ -31,7 +33,7 @@ Base data structure shared by every WI, regardless of type:
 
 **User Story** — a user need described from that user's point of view (who, what, why); the basic unit of value in agile development. A User Story is decomposed into multiple Tasks.
 
-**Task** — the technical breakdown of a User Story, Defect, Refactoring or Spike: the actual work developers, testers or designers must do. Business rule: any item decomposed into Tasks (User Story, Defect, Refactoring, Spike) is done only when all of its Tasks are finished.
+**Task** — the technical breakdown of a User Story, Defect, Refactoring or Spike: the actual work developers, testers or designers must do.
 
 Hierarchy: Epic → Feature → User Story → Task.
 
@@ -44,6 +46,8 @@ Hierarchy: Epic → Feature → User Story → Task.
 Hierarchy: Defect | Refactoring | Spike → Task.
 
 **Issue** — a work item that blocks the progress of the team's work. It can block any item in the hierarchy (Epic, Feature, User Story, Defect, Refactoring, Spike, Task). It is not part of the hierarchy and is not decomposed into Tasks.
+
+**Closing rule** (applies everywhere: WEBSITE, Kanban, CLI): a WI cannot be closed while it has open children in the hierarchy (Epic → Features, Feature → User Stories, User Story/Defect/Refactoring/Spike → Tasks) or while it is blocked by an open Issue.
 
 **Tag** — classifies WIs; tags are per project. Fields: `name` (required), `desc`, `color` (hexadecimal), `value` (sub-value); only `name` is required. GitLab-style:
 - simple tag: name only, no categorisation (e.g. `frontend`, `backend`, `design`, `qa`);
@@ -70,6 +74,12 @@ Comment types:
 - `RISK` — A problem that has not happened yet but may happen, with its impact and, if possible, its mitigation. Unlike BLOCKER, it is not yet preventing the work.
 - `REVIEW` — Result of a review of the WI's work (code, design, documentation): what was reviewed, observations, and verdict (approved / changes requested).
 - `DEBT` — Existing technical debt identified while working on the WI; it may give rise to a Refactoring.
+
+**Project views** (WEBSITE/GUI): (1) Work Item list; (2) Kanban boards; (3) Gantt chart — planning from `planstart`/`planend`, history from `starteddt`/`closeddt`.
+
+**Kanban boards** — behave in every respect like GitLab issue boards. A project can have multiple boards with different columns. Columns: `open` (first), user-chosen intermediate columns each matching a tag, `closed` (last) — e.g. `open`, `tag1`, `tag2`, `closed`. `open` = open WIs (empty `closeddt`) with none of the board's column tags; a tag column = only the open WIs that have that column's tag; `closed` = closed WIs. WIs can move freely between any columns: moving a card removes the tag of the column it was in and adds the tag of the new column (`open` has no tag); moving to `closed` also closes the WI, moving out of `closed` reopens it (clears `closeddt`). Moving to `closed` is refused if the closing rule is not met.
+
+The CLI provides the same views as the WEBSITE (list, Kanban, Gantt) for AI agents, as JSON or another agent-appropriate format.
 
 **Audit log** — one table per project (in the project database) recording the operations performed by users, through the WEBSITE or the CLI. Only operations that create, modify or delete state are logged; reads are not. It does not store changed data (no before/after values), only which change was made (e.g. `created work item #123`, `modified WI #44`, `created comment #555`). It is the only place the `DEVICE-ID` is stored. Append-only: entries are never edited or deleted. Fields: `id`, `createddt` (date/time), `user`, `deviceid`, `action` (`create` | `modify` | `delete`), `entity` (e.g. `workitem`, `comment`, `tag`), `entityid`; readable descriptions are derived from them. The central `planner` database has an audit log with the same structure for platform-level operations (projects, users, permissions, tokens, etc.).
 

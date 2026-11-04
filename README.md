@@ -30,8 +30,10 @@ All Work Items, regardless of their type, share the same base data structure:
 | `kind` | Work Item type: `epic`, `feature`, `userstory`, `task`, `defect`, `refactoring`, `spike` or `issue`. | Yes |
 | `title` | Title that identifies the Work Item. | Yes |
 | `desc` | Description of the work the Work Item is meant to address. | Yes |
+| `planstart` | Planned start date. | No |
+| `planend` | Planned end date. | No |
 | `starteddt` | Start date. | No |
-| `closeddt` | Date on which the Work Item was completed. Empty until the Work Item is completed. | Set on completion |
+| `closeddt` | Date on which the Work Item was completed. Empty until the Work Item is completed, and cleared again if it is reopened. | Set on completion |
 
 ### Strategic planning types
 
@@ -51,7 +53,7 @@ A **User Story** describes a user need told from that user's point of view — *
 
 ### Task
 
-A **Task** is the technical breakdown of a User Story, Defect, Refactoring or Spike. It represents the actual work that developers, testers or designers need to do. A User Story, Defect, Refactoring or Spike is only done when all of its Tasks are finished.
+A **Task** is the technical breakdown of a User Story, Defect, Refactoring or Spike. It represents the actual work that developers, testers or designers need to do. A User Story, Defect, Refactoring or Spike is only done when all of its Tasks are finished (see [Closing rules](#closing-rules)).
 
 ### Defect
 
@@ -82,6 +84,15 @@ Defect | Refactoring | Spike
 
 Issue ──blocks──▶ any work item above
 ```
+
+### Closing rules
+
+A Work Item **cannot be closed** while:
+
+- it has **open children** in the hierarchy (e.g. an Epic with open Features, a Feature with open User Stories, a User Story with open Tasks); or
+- it is **blocked by an open Issue**.
+
+These rules apply wherever a Work Item is closed — WEBSITE, Kanban boards or CLI.
 
 ## Tags
 
@@ -137,6 +148,31 @@ Every comment belongs to exactly one Work Item. Comments can be edited and delet
 | `text` | Comment content. | Yes |
 | `author` | User who wrote the comment. | Yes |
 | `createddt` | Date the comment was created. | Yes (automatic) |
+
+## Project views
+
+The work-management interface (**WEBSITE (GUI)**) offers multiple ways of viewing a project:
+
+1. **Work Item list** — a listing of the project's Work Items.
+2. **Kanban boards** — Work Items organised in Kanban-style columns (see below).
+3. **Gantt chart** — a timeline of the project, covering both **planning** (`planstart` / `planend`) and **history** (`starteddt` / `closeddt`).
+
+### Kanban boards
+
+Kanban boards behave in every respect like **GitLab issue boards**:
+
+- A project can have **multiple boards**, each configured with its own columns.
+- Every board has the columns `open` (first) and `closed` (last). In between, the user chooses the intermediate columns, each one matching a **tag** — e.g. `open`, `tag1`, `tag2`, `closed`.
+- `open` shows the open Work Items (empty `closeddt`) that have none of the board's column tags; each tag column shows **only** the open Work Items that have that column's tag; `closed` shows the closed Work Items.
+- Work Items can move freely from any column to any other column. Moving a card **removes the tag of the column it was in and adds the tag of the new column**:
+  - tag column → tag column: the source tag is removed and the target tag is added;
+  - `open` → tag column: the target tag is added;
+  - tag column → `open`: the source tag is removed;
+  - any column → `closed`: the source tag (if any) is removed and the Work Item is closed;
+  - `closed` → any column: the Work Item is reopened (its `closeddt` is cleared) and the target tag (if any) is added.
+- Moving a Work Item to `closed` is refused if it cannot be closed (see [Closing rules](#closing-rules)).
+
+The **CLI** provides the same views (list, Kanban boards, Gantt) for AI agents, presenting the information as JSON or another format better suited to agents.
 
 ## Audit log
 
