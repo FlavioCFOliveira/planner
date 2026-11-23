@@ -2,14 +2,14 @@
 title: Data integrity and concurrency
 status: draft
 last-reviewed: 2026-11-23
-related: [database-schema.md, domain-model.md, open-questions.md, ../functional-spec/closing-rules.md, ../functional-spec/kanban-boards.md, ../functional-spec/audit-log.md]
+related: [database-schema.md, domain-model.md, architecture.md, security.md, web-api.md, open-questions.md, ../functional-spec/closing-rules.md, ../functional-spec/kanban-boards.md, ../functional-spec/audit-log.md]
 ---
 
 # Data integrity and concurrency
 
 ## Overview
 
-Row-local rules are declarative ([database-schema.md](database-schema.md)). A rule that spans rows is enforced by the application, in the same transaction as the write, under explicit row locks. Two concurrent requests therefore cannot both pass a check that only one of them may pass. Source ids `[Sn]` refer to the [source register](database-schema.md#sources).
+Row-local rules are declarative ([database-schema.md](database-schema.md)). A rule that spans rows is enforced by the application, in the same transaction as the write, under explicit row locks. Two concurrent requests therefore cannot both pass a check that only one of them may pass. One connection reaches every database by fully qualified names, so one InnoDB transaction can lock and write rows of `planner` and of a `planner_<project>` together ([architecture.md](architecture.md#database-access)). Source ids `[Sn]` refer to the [source register](database-schema.md#sources). Decider key: [README.md](README.md#conventions).
 
 ## Locking protocol
 
@@ -17,9 +17,26 @@ Row-local rules are declarative ([database-schema.md](database-schema.md)). A ru
 |---|------|
 | L1 | Every check that decides whether a write is allowed reads with a locking read: `SELECT … FOR UPDATE` (X) or `SELECT … LOCK IN SHARE MODE` (S) [S15]. The check and the write run in one transaction. A plain consistent read never decides a write. |
 | L2 | A transaction that changes the state another rule depends on takes X on that row. A transaction whose validity depends on a row's state takes at least S on it. |
-| L3 | Lock order, to reduce deadlocks: `projects` row → Sprint/Release rows → Work Item rows by ascending `id` → `board_columns` rows → `project_settings` row. |
-| L4 | On deadlock (error 1213) or snapshot conflict (error 1020, `ER_CHECKREAD`, raised when `innodb_snapshot_isolation=ON` [S14]), the application rolls back and retries the whole transaction. The number of retries is bounded, and the bound is not yet specified ([TOQ-007](open-questions.md#toq-007)). |
+| L3 | Global lock order, to reduce deadlocks. Central rows first: `planner`.`projects` rows → `users` rows → `project_roles` rows → `tokens` rows → `sessions` rows; then project rows: Sprint/Release rows → Work Item rows → `board_columns` rows → `project_settings` row. Rows of one table are locked by ascending primary key. A transaction that needs X on a row locks it X at its first lock, never S first and X later: two holders of S both waiting for X would deadlock. (Extension to central rows: U. Ordering within the central tables: B.) |
+| L4 | On deadlock (error 1213), snapshot conflict (error 1020, `ER_CHECKREAD`, raised when `innodb_snapshot_isolation=ON` [S14]) or lock wait timeout (error 1205, after the 5 s session `innodb_lock_wait_timeout` of [database-schema.md](database-schema.md#required-server-settings)) [S26], the application rolls back the whole transaction and retries it, at most 3 times. A 1205 rolls back only the statement [S14], so the explicit rollback is required. Delay before retry *n* (full jitter): uniform in [0, 10·4ⁿ⁻¹] ms, that is up to 10, 40 and 160 ms. When the retries are exhausted the request fails with HTTP 503 ([web-api.md](web-api.md#errors)). (U) |
 | L5 | The audit entries of an operation (FR-AUD-002, FR-AUD-014) are inserted in the operation's transaction, all with one `createddt`. |
+| L6 | A transaction that holds row locks awaits nothing but the database: no IdP call, no file I/O, no client I/O. Locks and pool connections are then held only for database time. (B) |
+
+## Permission check in writes
+
+Every write to a project re-checks the caller's permission in the write's own transaction, under S locks, so a role, token or project removed concurrently cannot let the write through (FR-AUTH-008, FR-AUTH-011, FR-AUTH-022, NFR-SEC-001). Order per L3. (U)
+
+| Row | Lock | Write refused unless |
+|-----|------|----------------------|
+| `planner`.`projects` row of the target project | S | `state = 'active'` |
+| `planner`.`users` row of the acting user | S | `is_deactivated = 0`; `is_admin` is read here |
+| `planner`.`project_roles` row (`project_id`, `user_id`) via `uq_project_roles` | S | the role permits the operation, or the user is an administrator. A missing row is locked as a gap, which blocks a concurrent insert [S48]. |
+| `planner`.`tokens` row (token requests only) | S | not revoked, `expiresdt` in the future, `deviceid` equals the request's `X-Device-Id` |
+
+- `token_grants` rows are not locked. They are fixed at issue (FR-AUTH-007) and removed only by project deletion, which first takes X on the `projects` row.
+- An operation that itself needs X on one of these rows (membership change, user deactivation) takes X there instead of S (L3).
+- Read requests check permission with plain consistent reads (L1 applies to writes only).
+- Evaluation of the effective permission: [security.md](security.md#authorisation).
 
 ## Rule enforcement
 
@@ -50,6 +67,7 @@ Row-local rules are declarative ([database-schema.md](database-schema.md)). A ru
 | FR-ACC-014: last owner | App | X on the `projects` row (serialises all membership changes of the project). |
 | FR-IDN-018: no deactivation of a last owner | App | X on every `projects` row where the user is `owner`, ascending `id`. X on the user. |
 | FR-ACC-016 / FR-IDN-020: last active administrator | App | X on all `users` rows with `is_admin = 1`. |
+| FR-ACC-012: first administrator, at any login of the configured `sub` | App ([security.md](security.md#first-administrator)) | X on the user's row (when the profile exists). S on all `users` rows with `is_admin = 1`; none exist, so the read locks the gap and blocks a concurrent grant [S48]. A first-login insert is serialised by `uq_users_idp_subject`. |
 | FR-KBN-021 / FR-KBN-015: append at bottom, reorder | App | X on the `board_columns` row before computing `MAX(position) + 1` or renumbering. |
 | FR-AUD-006 / BR-AUD-001 | Decl. (privileges) | none |
 
@@ -102,12 +120,14 @@ Deletion (FR-PRJ-009, FR-AUD-013):
 2. `REVOKE` the application's grants on the project database. `DROP DATABASE IF EXISTS planner_<name>`.
 3. Central transaction: `DELETE` the `projects` row. Cascades remove roles and token grants (FR-AUTH-020).
 
-Recovery: a project left in `provisioning` is rolled back (drop its database if it exists, delete the row, no audit entry). A project left in `deleting` is completed from step 2. Every step is idempotent. How recovery tells a crashed sequence from one still running on another server instance depends on the deployment topology: [TOQ-007](open-questions.md#toq-007).
+Recovery: a project left in `provisioning` is rolled back (revoke any grants, drop its database if it exists, delete the row, no audit entry). A project left in `deleting` is completed from step 2. Every step is idempotent. Recovery runs at server startup, before requests are accepted ([architecture.md](architecture.md#startup-sequence)). One server instance runs at a time (U), so every project found in `provisioning` or `deleting` at startup belongs to a crashed sequence; no cross-instance coordination exists.
 
 ## Other composite operations
 
 | Operation | Transaction content |
 |-----------|---------------------|
-| User deactivation (FR-IDN-010, FR-IDN-012) | Locks per [the enforcement table](#rule-enforcement). Set `is_deactivated`, `revoked = 1` on all the user's tokens, delete all the user's `project_roles`. Audit: `modify` `user`; `modify` `token` per token revoked; `delete` `role` per role removed (FR-AUD-014; mapping in [database-schema.md](database-schema.md#central-database-planner)). |
+| User deactivation (FR-IDN-010, FR-IDN-012, FR-IDN-014) | Locks per [the enforcement table](#rule-enforcement), in L3 order. Set `is_deactivated`; delete all the user's `project_roles`; set `revoked = 1` on all the user's tokens; delete all the user's `sessions` (U). Audit: `modify` `user`; `delete` `role` per role removed; `modify` `token` per token revoked (FR-AUD-014; mapping in [database-schema.md](database-schema.md#central-database-planner)). Session deletion is not audited. |
+| Logout | Delete the session row. Not audited. |
+| Photo replacement | File and row order in [architecture.md](architecture.md#user-photo-storage). |
 | Card move (UC-KBN-001) | Tag changes (FR-KBN-008…012, FR-KBN-019), close or reopen with their checks (FR-KBN-013, FR-KBN-014), card maintenance. One `modify` `workitem` entry. |
 | Role change | Update `project_roles.role` in place, so `entityid` stays stable. Audit `modify` `role`. |

@@ -2,14 +2,14 @@
 title: Domain model
 status: draft
 last-reviewed: 2026-11-23
-related: [database-schema.md, data-integrity-and-concurrency.md, ../functional-spec/work-items.md, ../functional-spec/glossary.md]
+related: [database-schema.md, data-integrity-and-concurrency.md, security.md, ../functional-spec/work-items.md, ../functional-spec/glossary.md]
 ---
 
 # Domain model
 
 ## Overview
 
-These are the server's domain types, at modelling level, in Rust (NFR-ARCH-002). The model uses no crates. `UtcDate` and `UtcDateTime` stand for whatever representation is chosen later. Column definitions are in [database-schema.md](database-schema.md). Locks and multi-row rules are in [data-integrity-and-concurrency.md](data-integrity-and-concurrency.md).
+These are the server's domain types, at modelling level, in Rust (NFR-ARCH-002). The model's only crate is `time` 0.3.55, behind `UtcDate` and `UtcDateTime` ([architecture.md](architecture.md#decisions) A8). Column definitions are in [database-schema.md](database-schema.md). Locks and multi-row rules are in [data-integrity-and-concurrency.md](data-integrity-and-concurrency.md).
 
 Invariant placement key, used in every table below:
 
@@ -22,15 +22,20 @@ Invariant placement key, used in every table below:
 ## Primitive and identifier types
 
 ```rust
-pub struct UtcDate(/* calendar date, UTC (FR-PLT-005) */);            // DATE
-pub struct UtcDateTime(/* instant, UTC, microsecond precision */);    // DATETIME(6), NFR-DATA-001
+pub struct UtcDate(time::Date);               // calendar date, UTC (FR-PLT-005); DATE
+pub struct UtcDateTime(time::PrimitiveDateTime); // UTC by construction, whole seconds; DATETIME, NFR-DATA-001
 
-// All ids: BIGINT UNSIGNED AUTO_INCREMENT, never reused, gaps allowed (database-schema.md D2).
-pub struct WorkItemId(u64);    pub struct CommentId(u64);      pub struct TagId(u64);
-pub struct SprintId(u64);      pub struct ReleaseId(u64);      pub struct BoardId(u64);
-pub struct BoardColumnId(u64); pub struct UserId(u64);         pub struct ProjectId(u64);
-pub struct ProjectRoleId(u64); pub struct TokenId(u64);        pub struct AuditEntryId(u64);
+// Ids: AUTO_INCREMENT, never reused, gaps allowed; width per entity (database-schema.md D2).
+// u16 = SMALLINT UNSIGNED; u32 = MEDIUMINT UNSIGNED (checked ≤ 16,777,215) or INT UNSIGNED.
+pub struct ProjectId(u16);     pub struct SprintId(u16);       pub struct ReleaseId(u16);
+pub struct BoardId(u16);       pub struct BoardColumnId(u16);  pub struct TagId(u16);
+pub struct UserId(u32);        pub struct ProjectRoleId(u32);  pub struct TokenId(u32);   // MEDIUMINT
+pub struct WorkItemId(u32);                                                              // MEDIUMINT
+pub struct CommentId(u32);                                                               // INT
+pub struct AuditEntryId(u32);  // INT in project databases, MEDIUMINT in the central database
 ```
+
+sqlx maps `time::Date` to `DATE` and `time::PrimitiveDateTime` to `DATETIME` [S29]. `PrimitiveDateTime` carries no offset; `UtcDateTime` is constructed only from a UTC instant truncated to whole seconds, so every value it holds is UTC (NFR-DATA-001).
 
 Ids are distinct types, so ids of different entities cannot be confused at compile time. Project-scoped ids are unique only within their project (BR-PRJ-001). They are meaningful only together with the `ProjectId` of the request.
 
@@ -73,15 +78,17 @@ All text value objects receive the input after trimming (FR-PLT-006). Lengths ar
 | `LongText` | ≥ 1 code point, ≤ 16,777,215 UTF-8 bytes | FR-WI-025, FR-CMT-012, FR-SPR-024, FR-REL-021, FR-PRJ-010; byte limit: [database-schema.md](database-schema.md#decisions) D7 | `MEDIUMTEXT` |
 | `TagName` | `^[a-z0-9_-]{1,50}$` | FR-TAG-012, FR-TAG-014 | CHECK |
 | `TagValue` | `^[a-z0-9_-]{1,50}$`. Absence is `Option::None`, never `""`. | FR-TAG-012, FR-TAG-014 | CHECK. `''` stores `None`. |
-| `Color` | `#RRGGBB` in either case. Holds the upper-case form, so `Eq` matches FR-TAG-015. | FR-TAG-013, FR-TAG-015 | CHECK upper case |
+| `Color` | Parsed from `#RRGGBB` in either case into a 24-bit RGB value (`u32` < 2²⁴); formatted back in uppercase. Case-only differences are the same value (FR-TAG-015). | FR-TAG-013, FR-TAG-015 | `MEDIUMINT UNSIGNED` (range = 24 bits) |
 | `ProjectName` | `^[a-z][a-z0-9_]{0,49}$` | FR-PRJ-005 | CHECK |
 | `CliDeviceId` | `^[A-Za-z0-9]{24}$` | FR-AUTH-013, FR-AUTH-023 | CHECK |
 | `DeviceId` | `enum DeviceId { Gui, Device(CliDeviceId) }`. Literal `GUI` for `Gui`. | FR-AUTH-015, FR-AUTH-016, FR-AUD-005 | CHECK |
 | `Email` | 1–64 code points, WHATWG "valid e-mail address" | FR-IDN-022 (planner edits only) | `VARCHAR(64)` |
 | `ExpiryDays` | Integer 1–365, default 30 | FR-AUTH-002, FR-AUTH-003 | `expiresdt > issueddt` only |
-| `IdpSubject` | `{ issuer: String, subject: String }`, ASCII, each ≤ 255 | FR-IDN-003; [database-schema.md](database-schema.md#central-database-planner) | UNIQUE |
-| `PhotoKey` | Opaque, ≤ 512 characters | decision U ([TOQ-001](open-questions.md#toq-001)) | `VARCHAR(512)` |
+| `IdpSubject` | OIDC `sub`, ASCII, ≤ 255; the single issuer is server configuration | FR-IDN-001, FR-IDN-003; [database-schema.md](database-schema.md#central-database-planner) | `VARCHAR(255)` ascii, UNIQUE |
+| `PhotoKey` | `[u8; 16]`, random, generated by planner on each upload | decision U ([architecture.md](architecture.md#user-photo-storage)) | `BINARY(16)` |
 | `TokenSecretHash` | `[u8; 32]`, SHA-256 of the secret | FR-AUTH-001, NFR-SEC-001 | `BINARY(32)` UNIQUE |
+| `TokenSecret` | `^plnr_[A-Za-z0-9_-]{43}$`; exists only in memory, at issue and per request | decision U ([security.md](security.md#cli-tokens)) | not stored |
+| `SessionIdHash` | `[u8; 32]`, SHA-256 of the session cookie value | decision U ([security.md](security.md#website-sessions)) | `BINARY(32)` PK |
 
 An optional text that is empty after trimming becomes `None` and is stored as NULL, never `''` (FR-PLT-006). Optional text columns carry `CHECK (col IS NULL OR col <> '')`.
 
@@ -243,7 +250,7 @@ pub struct AuditEntry<E> {            // E = ProjectAuditEntity | PlatformAuditE
     pub deviceid: DeviceId,
     pub action: AuditAction,
     pub entity: E,
-    pub entityid: u64,                 // id of the entity named by `entity`
+    pub entityid: u32,                 // id of the entity named by `entity` (INT in projects, MEDIUMINT centrally)
 }
 ```
 
@@ -256,7 +263,7 @@ The type exposes no update or delete operation (FR-AUD-006). Server privileges e
 ```rust
 pub struct User {
     pub id: UserId,
-    idp: IdpSubject,                   // immutable key (FR-IDN-003, BR-IDN-001)
+    idp: IdpSubject,                   // immutable key (FR-IDN-003, BR-IDN-001); internal, no getter on API/CLI paths (FR-IDN-027)
     pub name: Option<String>,          // IdP value truncated to 64 code points (FR-IDN-023); edits take Name64
     pub email: Option<String>,         // IdP value truncated to 64 code points; edits take Email
     pub displayname: Option<Name200>,
@@ -269,6 +276,8 @@ pub struct User {
 | Invariant | Source | Where |
 |-----------|--------|-------|
 | One profile per IdP identity | FR-IDN-003 | D (UNIQUE) |
+| `id` is assigned at creation, increasing, never changed or reused; it is the only external designation of the user (comment `author`, audit `user`, membership, search) | FR-IDN-025, FR-IDN-026 | D (`AUTO_INCREMENT`, D2), S (no update path) |
+| The IdP subject is never exposed by project-level operations, user search or token reads | FR-IDN-027 | T (private field; response types carry `UserId` and display name only) |
 | Never deleted | FR-IDN-011 | S (no delete path), D (FK RESTRICT from roles and tokens) |
 | Planner edits validated; IdP values only truncated to 64 code points | FR-IDN-022, FR-IDN-023 | T (edit commands, profile creation), D (`VARCHAR(64)`) |
 | Last active administrator kept | FR-ACC-016, FR-IDN-020 | S |
@@ -313,6 +322,24 @@ pub struct TokenGrant { pub project: ProjectId, pub level: TokenLevel }
 | Effective permission = grant ∩ role (administrators: the grant) | FR-AUTH-008, FR-AUTH-022 | S (per request) |
 | Deactivated users cannot issue tokens | FR-IDN-014 | S |
 
+### Session
+
+```rust
+pub struct Session {
+    id_hash: SessionIdHash,            // the cookie value itself is never stored
+    user: UserId,
+    csrf_token: [u8; 32],
+    createddt: UtcDateTime,            // absolute timeout reference
+    lastseendt: UtcDateTime,           // idle timeout reference
+}
+```
+
+| Invariant | Source | Where |
+|-----------|--------|-------|
+| Expires after the idle or the absolute timeout | decision U ([security.md](security.md#website-sessions)) | S (per request) |
+| No session for a deactivated user | FR-IDN-014 | S (deleted in the deactivation transaction; login refused) |
+| `lastseendt ≥ createddt` | — | D (CHECK) |
+
 ## Entity-relationship diagrams
 
 Solid lines are FKs. The dotted line (`..`) is a logical reference with no FK ([database-schema.md](database-schema.md#decisions) D10).
@@ -324,6 +351,7 @@ erDiagram
     users ||--o{ project_roles : "holds"
     projects ||--o{ project_roles : "has"
     users ||--o{ tokens : "issues"
+    users ||--o{ sessions : "signed in as"
     tokens ||--o{ token_grants : "grants"
     projects ||--o{ token_grants : "covered by"
     users ||..o{ audit_log : "performs (logical)"
@@ -349,7 +377,7 @@ erDiagram
         tinyint id
     }
     audit_log {
-        bigint user_id "logical ref to planner.users"
+        mediumint user_id "logical ref to planner.users"
     }
     schema_version {
         tinyint id
