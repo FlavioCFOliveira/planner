@@ -15,8 +15,8 @@ The platform supports multiple projects. Each project is isolated in its own dat
 
 - FR-PRJ-001: The system SHALL support multiple projects.
 - FR-PRJ-002: The system SHALL store each project in its own, separate database, named `planner_<project>`, where `<project>` is the project name.
-- FR-PRJ-003: The system SHALL keep a central database, named `planner`, holding platform-wide data, including: which projects exist; the platform's users; the permissions each user has in each project; the platform audit log.
-- FR-PRJ-004: The system SHALL store a project's comments and audit log in that project's database.
+- FR-PRJ-003: The system SHALL keep a central database, named `planner`, holding platform-wide data, including: which projects exist; the platform's users; the permissions each user has in each project; the platform audit log. The project description (`desc`, FR-PRJ-010) is project data, not platform-wide data, and is held with the project (FR-PRJ-004).
+- FR-PRJ-004: The system SHALL store a project's comments, audit log and description (`desc`, FR-PRJ-010) in that project's database.
 - FR-PRJ-005: A project name SHALL consist of 1 to 50 characters, drawn from lowercase letters `a`–`z`, digits `0`–`9` and underscore, and SHALL start with a letter; that is, it SHALL match `^[a-z][a-z0-9_]{0,49}$`.
 - FR-PRJ-006: A project name SHALL be unique on the platform.
 - FR-PRJ-007: The system SHALL NOT allow a project to be renamed.

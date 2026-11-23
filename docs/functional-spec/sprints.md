@@ -17,9 +17,9 @@ A Sprint is an iteration of a project. Work Items are assigned to Sprints. Sprin
 
 - FR-SPR-001: Each project SHALL have its own set of Sprints.
 - FR-SPR-002: Every Sprint SHALL have the fields defined in [Inputs / Outputs](#inputs--outputs).
-- FR-SPR-015: WHEN a Sprint is created, the system SHALL assign it an automatic, sequential, numeric `id`, unique among the Sprints of the project.
+- FR-SPR-015: WHEN a Sprint is created, the system SHALL assign it an automatic, increasing, numeric `id`, unique among the Sprints of the project. Ids SHALL never be reused and MAY have gaps.
 - FR-SPR-003: IF a Sprint is submitted without `name`, `startdt` or `enddt`, THEN the system SHALL reject it.
-- FR-SPR-016: IF a Sprint is created or edited so that its `name` equals the `name` of another Sprint of the same project, THEN the system SHALL refuse the request.
+- FR-SPR-016: IF a Sprint is created or edited so that its `name` equals the `name` of another Sprint of the same project, THEN the system SHALL refuse the request. Two names that differ only in letter case, or only in accents or other diacritics, SHALL be treated as equal (for example, `S1` and `s1`, or `Versão` and `Versao`).
 - FR-SPR-017: IF a Sprint is created or edited so that its `enddt` is earlier than its `startdt`, THEN the system SHALL refuse the request.
 - FR-SPR-024: `name` SHALL be 1 to 200 characters of any Unicode text. `goal` SHALL have no functional length limit. `startdt` and `enddt` SHALL be calendar dates without a time of day, interpreted as UTC dates (FR-PLT-005) and persisted in UTC ([NFR-DATA-001](overview.md#non-functional-requirements)).
 - FR-SPR-018: The date ranges of different Sprints of the same project MAY overlap.
@@ -86,6 +86,8 @@ Acceptance criteria:
 - Given a closed Sprint with no assigned Work Items, when a user deletes it, then the request is refused.
 - Given a Sprint with one assigned Work Item, when a user deletes the Sprint, then the request is refused.
 - Given a Sprint named `S1`, when a user creates another Sprint named `S1` in the same project, then the request is refused.
+- Given a Sprint named `S1`, when a user creates another Sprint named `s1` in the same project, or renames another Sprint to `s1`, then the request is refused.
+- Given a Sprint named `Versão`, when a user creates another Sprint named `Versao` in the same project, or renames another Sprint to `Versao`, then the request is refused.
 - Given a new Sprint with `enddt` earlier than `startdt`, when it is submitted, then it is rejected.
 - Given a Sprint from 2026-01-01 to 2026-01-14, when a user creates a Sprint from 2026-01-10 to 2026-01-24, then it is accepted.
 
@@ -93,8 +95,8 @@ Acceptance criteria:
 
 | Field | Description | Required |
 |-------|-------------|----------|
-| `id` | Automatic sequential numeric identifier, unique among the project's Sprints. | Yes (automatic) |
-| `name` | Name of the Sprint, unique within the project. | Yes |
+| `id` | Automatic, increasing numeric identifier; never reused; may have gaps; unique among the project's Sprints. | Yes (automatic) |
+| `name` | Name of the Sprint, unique within the project, ignoring letter case and diacritics (FR-SPR-016). | Yes |
 | `goal` | Goal of the Sprint. | No |
 | `startdt` | Start date of the Sprint: calendar date, UTC, persisted in UTC ([NFR-DATA-001](overview.md#non-functional-requirements)). | Yes |
 | `enddt` | End date of the Sprint: calendar date, UTC, persisted in UTC ([NFR-DATA-001](overview.md#non-functional-requirements)); not earlier than `startdt`. | Yes |

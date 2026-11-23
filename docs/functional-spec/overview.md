@@ -33,7 +33,7 @@ In scope:
 - FR-PLT-004: The CLI SHALL be the client application of the WEB API.
 
 - FR-PLT-005: All date-times SHALL be in UTC. Date-only fields SHALL be interpreted as UTC calendar dates, and "the current date" SHALL be the current UTC date. Persistence in UTC is governed separately by NFR-DATA-001.
-- FR-PLT-006: Before validating and storing a text value entered by a user, the system SHALL remove its leading and trailing whitespace. A required text field that is empty after this removal SHALL be treated as missing. Length limits SHALL be counted in Unicode code points on the trimmed value. Values copied from the Identity Provider are exempt (FR-IDN-023).
+- FR-PLT-006: Before validating and storing a text value entered by a user, the system SHALL remove its leading and trailing whitespace. A required text field that is empty after this removal SHALL be treated as missing. An optional text field that is empty after this removal SHALL be treated as absent (cleared) and SHALL NOT be stored as an empty string. Length limits SHALL be counted in Unicode code points on the trimmed value. Values copied from the Identity Provider are exempt (FR-IDN-023).
 - FR-PLT-007: The WEBSITE and the CLI SHALL display every date-time in UTC and SHALL mark it as UTC. This is a presentation rule; it does not affect NFR-DATA-001.
 
 ## Non-Functional Requirements

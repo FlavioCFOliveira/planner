@@ -23,11 +23,11 @@ planner delegates registration and login to an external Identity Provider and ke
 - FR-IDN-003: The system SHALL keep a profile for each user, keyed by the user identifier provided by the Identity Provider.
 - FR-IDN-017: WHEN a user logs in successfully for the first time, the system SHALL create the user's profile.
 - FR-IDN-004: WHEN a user profile is created, the system SHALL copy the user's `name` and `email` from the Identity Provider.
-- FR-IDN-023: The values copied from the Identity Provider under FR-IDN-004 SHALL be accepted as supplied, even when they do not satisfy FR-IDN-022 or are absent. FR-IDN-022 SHALL apply only to edits made in planner. Data supplied by the Identity Provider SHALL never block a login.
+- FR-IDN-023: The values copied from the Identity Provider under FR-IDN-004 SHALL be accepted without validation, even when they do not satisfy FR-IDN-022 or are absent, with one exception: a value longer than 64 characters SHALL be truncated to its first 64 characters, counted in Unicode code points. An absent value SHALL remain absent. FR-IDN-022 SHALL apply only to edits made in planner. Data supplied by the Identity Provider SHALL never block a login.
 - FR-IDN-005: After the profile is created, the system SHALL NOT read the Identity Provider's profile data again.
 - FR-IDN-006: The profile SHALL hold exactly two planner-only fields, both optional: `photo` and `displayname`. The `displayname` is a planner display name, distinct from the `name` copied from the Identity Provider.
 - FR-IDN-021: Wherever the system shows a user (in the WEBSITE, in CLI output, and as a comment's author), it SHALL show the user's `displayname` when set, and the user's `name` when `displayname` is empty.
-- FR-IDN-022: The profile `name` and `displayname`, when set, SHALL be 1 to 200 characters of any Unicode text. The `email` SHALL be a valid e-mail address as defined by the WHATWG HTML Standard ("valid e-mail address").
+- FR-IDN-022: The profile `name`, when set, SHALL be 1 to 64 characters of any Unicode text. The profile `displayname`, when set, SHALL be 1 to 200 characters of any Unicode text. The `email` SHALL be 1 to 64 characters and SHALL be a valid e-mail address as defined by the WHATWG HTML Standard ("valid e-mail address").
 - FR-IDN-007: The system SHALL allow a profile's fields to be edited by the user themself and by platform administrators, only through the WEBSITE.
 - FR-IDN-008: WHEN a profile field is edited, the system SHALL change only the planner profile and SHALL NOT propagate the change to the Identity Provider.
 - FR-IDN-009: The system SHALL manage users in the central `planner` database.
@@ -77,6 +77,8 @@ User profile:
 - Given a user, when an AI agent tries to edit the user's profile through the CLI, then the request is refused.
 - Given a user with `name` `Ana Silva` and `displayname` `ana`, then comments by the user show `ana`; when `displayname` is cleared, then they show `Ana Silva`.
 - Given a user, when they set a `displayname` of 201 characters, then the request is refused.
+- Given a user, when they set a `name` of 65 characters, or a valid `email` of 65 characters, then the request is refused; when they set a `name` of 64 characters, then it is accepted.
+- Given a person whose IdP `name` is 70 characters long and whose IdP `email` is absent, when they log in for the first time, then the login succeeds, the profile `name` holds the first 64 characters of the IdP `name`, and the profile `email` is absent.
 
 ## Glossary References
 

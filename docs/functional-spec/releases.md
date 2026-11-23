@@ -17,9 +17,9 @@ A Release is a version of the software that a project delivers. Work Items are a
 
 - FR-REL-001: Each project SHALL have its own set of Releases.
 - FR-REL-002: Every Release SHALL have the fields defined in [Inputs / Outputs](#inputs--outputs).
-- FR-REL-010: WHEN a Release is created, the system SHALL assign it an automatic, sequential, numeric `id`, unique among the Releases of the project.
+- FR-REL-010: WHEN a Release is created, the system SHALL assign it an automatic, increasing, numeric `id`, unique among the Releases of the project. Ids SHALL never be reused and MAY have gaps.
 - FR-REL-011: IF a Release is submitted without `name`, THEN the system SHALL reject it.
-- FR-REL-012: IF a Release is created or edited so that its `name` equals the `name` of another Release of the same project, THEN the system SHALL refuse the request.
+- FR-REL-012: IF a Release is created or edited so that its `name` equals the `name` of another Release of the same project, THEN the system SHALL refuse the request. Two names that differ only in letter case, or only in accents or other diacritics, SHALL be treated as equal (for example, `v1.0` and `V1.0`, or `Versão 1` and `Versao 1`).
 - FR-REL-021: `name` SHALL be 1 to 200 characters of any Unicode text. `desc` SHALL have no functional length limit. `plandt` and `releaseddt` SHALL be interpreted as UTC dates (FR-PLT-005) and persisted in UTC ([NFR-DATA-001](overview.md#non-functional-requirements)).
 - FR-REL-003: The system SHALL NOT link a Release directly to a Sprint.
 
@@ -80,13 +80,15 @@ Acceptance criteria:
 - Given an Issue, when a user assigns it to a Release, then the request is refused.
 - Given a Release with one assigned Work Item, when a user deletes the Release, then the request is refused.
 - Given a Release named `1.0.0`, when a user creates another Release named `1.0.0` in the same project, then the request is refused.
+- Given a Release named `v1.0`, when a user creates another Release named `V1.0` in the same project, or renames another Release to `V1.0`, then the request is refused.
+- Given a Release named `Versão 1`, when a user creates another Release named `Versao 1` in the same project, or renames another Release to `Versao 1`, then the request is refused.
 
 ## Inputs / Outputs
 
 | Field | Description | Required |
 |-------|-------------|----------|
-| `id` | Automatic sequential numeric identifier, unique among the project's Releases. | Yes (automatic) |
-| `name` | Name of the Release, which is its version; unique within the project. | Yes |
+| `id` | Automatic, increasing numeric identifier; never reused; may have gaps; unique among the project's Releases. | Yes (automatic) |
+| `name` | Name of the Release, which is its version; unique within the project, ignoring letter case and diacritics (FR-REL-012). | Yes |
 | `desc` | Description of the Release. | No |
 | `plandt` | Planned release date: calendar date, UTC, persisted in UTC ([NFR-DATA-001](overview.md#non-functional-requirements)). | No |
 | `releaseddt` | Release date: calendar date, UTC, persisted in UTC ([NFR-DATA-001](overview.md#non-functional-requirements)); entered by the user; not later than the current UTC date. Empty while unreleased. | Set by the user on release |

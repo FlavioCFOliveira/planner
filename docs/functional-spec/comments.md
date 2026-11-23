@@ -16,7 +16,7 @@ Each project has a comments component linked to its Work Items. Comments form th
 - FR-CMT-001: The system SHALL store a project's comments in that project's database.
 - FR-CMT-002: Every comment SHALL belong to exactly one Work Item of the same project.
 - FR-CMT-003: Every comment SHALL have exactly one of the comment types listed in [Comment types](#comment-types).
-- FR-CMT-004: WHEN a comment is created, the system SHALL assign it an automatic, sequential, numeric `id` and set its `createddt` to the UTC date and time of creation, persisted in UTC ([NFR-DATA-001](overview.md#non-functional-requirements)).
+- FR-CMT-004: WHEN a comment is created, the system SHALL assign it an automatic, increasing, numeric `id`, which SHALL never be reused and MAY have gaps, and set its `createddt` to the UTC date and time of creation, persisted in UTC ([NFR-DATA-001](overview.md#non-functional-requirements)).
 - FR-CMT-005: IF a comment is submitted without `wiid`, `kind` or `text`, THEN the system SHALL reject it.
 - FR-CMT-012: `text` SHALL have no functional length limit; its technical maximum is left to the technical specification.
 - FR-CMT-013: Wherever a comment's author is shown, the system SHALL show it as FR-IDN-021 states.
@@ -66,7 +66,7 @@ Each project has a comments component linked to its Work Items. Comments form th
 
 | Field | Description | Required |
 |-------|-------------|----------|
-| `id` | Automatic sequential numeric identifier. | Yes (automatic) |
+| `id` | Automatic, increasing numeric identifier; never reused; may have gaps. | Yes (automatic) |
 | `wiid` | `id` of the Work Item the comment belongs to. | Yes |
 | `kind` | Comment type. | Yes |
 | `text` | Comment content. | Yes |

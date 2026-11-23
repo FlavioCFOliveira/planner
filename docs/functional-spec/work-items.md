@@ -21,7 +21,7 @@ The Work Item (WI) is the central entity of planner. Every Work Item has a type,
 
 ### Identifier
 
-- FR-WI-003: WHEN a Work Item is created, the system SHALL assign it an automatic, sequential, numeric `id`.
+- FR-WI-003: WHEN a Work Item is created, the system SHALL assign it an automatic, increasing, numeric `id`. Ids SHALL never be reused and MAY have gaps.
 - FR-WI-004: The `id` SHALL be unique across all Work Items of a project, whatever their type.
 
 ### Mandatory fields
@@ -123,7 +123,7 @@ Base data structure, shared by every Work Item:
 
 | Field | Description | Required |
 |-------|-------------|----------|
-| `id` | Automatic sequential numeric identifier, unique across all Work Items of a project, whatever their type. | Yes (automatic) |
+| `id` | Automatic, increasing numeric identifier; never reused; may have gaps; unique across all Work Items of a project, whatever their type. | Yes (automatic) |
 | `kind` | Work Item type: `epic`, `feature`, `userstory`, `task`, `defect`, `refactoring`, `spike` or `issue`. Cannot be changed after creation. | Yes |
 | `title` | Title that identifies the Work Item. | Yes |
 | `desc` | Description of the work the Work Item is meant to address. | Yes |
