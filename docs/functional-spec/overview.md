@@ -43,7 +43,13 @@ In scope:
 - NFR-ARCH-003: The WEB API SHALL be a REST interface.
 - NFR-ARCH-004: The server SHALL persist its data in MariaDB.
 - NFR-DATA-001 (INVIOLABLE): Every date and every date-time MUST be persisted in UTC, regardless of the time zone in which it is presented, with no exception. This applies to every date and date-time field of every entity, present or future, including: Work Item `planstart`, `planend`, `starteddt` and `closeddt`; comment `createddt` and `editeddt`; Sprint `startdt` and `enddt`; Release `plandt` and `releaseddt`; token `issueddt` and `expiresdt`; audit log `createddt` in every project audit log and in the central audit log; and any date or date-time held in user profiles or projects. This requirement holds even if the presentation rules (FR-PLT-007) change.
+- NFR-PERF-001: The platform SHALL support at least 500 registered users, at least 100 of them active at the same time, and at least 500 projects.
+- NFR-PERF-002: The platform SHALL sustain a peak load of at least 200 requests per second, counting the requests of every client, AI agents included, while NFR-PERF-001 holds.
+- NFR-PERF-003: Under the load of NFR-PERF-002, with the users and projects of NFR-PERF-001 and the data volume of NFR-PERF-005, the WEB API SHALL answer every simple operation (NFR-PERF-004) with a 95th-percentile latency below 200 ms. Latency SHALL be measured at the server, from the receipt of a request to the sending of its response, and SHALL exclude network transit to and from the client.
+- NFR-PERF-004: A simple operation is any WEB API operation that acts on a single object: reading, creating, modifying, closing, reopening or deleting a single Work Item, comment, tag, Sprint or Release, where that object supports the operation; activating or closing a single Sprint; releasing a single Release; and moving a single card on a Kanban board. List and filter operations are not simple operations; NFR-PERF-003 sets no latency target for them.
+- NFR-PERF-005: NFR-PERF-003 SHALL be verified with every project holding 10,000 Work Items, 100,000 comments and 500,000 project audit log entries.
 
 ## Glossary References
 
-[Work Item](glossary.md#work-item-wi), [WEBSITE](glossary.md#website-gui), [WEB API](glossary.md#web-api), [CLI](glossary.md#cli).
+[Work Item](glossary.md#work-item-wi), [WEBSITE](glossary.md#website-gui), [WEB API](glossary.md#web-api), [CLI](glossary.md#cli), [AI agent](glossary.md#ai-agent), [Kanban board](glossary.md#kanban-board), [Audit log](glossary.md#audit-log).
+

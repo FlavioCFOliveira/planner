@@ -75,7 +75,7 @@ Module codes:
 | `AUTH` | CLI authentication and `DEVICE-ID` | [cli-authentication.md](cli-authentication.md) |
 | `PRJ` | Projects and tenancy | [multi-project.md](multi-project.md) |
 
-NFR categories: `ARCH` (architecture and technology constraints, in [overview.md](overview.md)), `DATA` (data persistence constraints, in [overview.md](overview.md)), `SEC` (security, in [cli-authentication.md](cli-authentication.md)), `USE` (usability, in [cli.md](cli.md)).
+NFR categories: `ARCH` (architecture and technology constraints, in [overview.md](overview.md)), `DATA` (data persistence constraints, in [overview.md](overview.md)), `PERF` (capacity and performance, in [overview.md](overview.md)), `SEC` (security, in [cli-authentication.md](cli-authentication.md)), `USE` (usability, in [cli.md](cli.md)).
 
 ### Inviolable requirements
 

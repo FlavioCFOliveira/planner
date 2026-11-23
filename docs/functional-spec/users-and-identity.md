@@ -16,12 +16,16 @@ planner delegates registration and login to an external Identity Provider and ke
 ### Delegated authentication
 
 - FR-IDN-001: The system SHALL delegate user registration and login to an external Identity Provider using OpenID Connect (OIDC).
+- FR-IDN-024: The system SHALL work with any Identity Provider that complies with the OpenID Connect standard. No specific Identity Provider vendor SHALL be required.
 - FR-IDN-002: The system SHALL NOT perform user registration or login itself.
 
 ### User profile
 
 - FR-IDN-003: The system SHALL keep a profile for each user, keyed by the user identifier provided by the Identity Provider.
 - FR-IDN-017: WHEN a user logs in successfully for the first time, the system SHALL create the user's profile.
+- FR-IDN-025: WHEN a user profile is created, the system SHALL assign it a user `id`: an automatic, increasing, numeric identifier, distinct from the IdP user id. A user `id` SHALL never be changed and SHALL never be reused; ids MAY have gaps.
+- FR-IDN-026: Wherever the WEBSITE, the WEB API or the CLI designates a user, the system SHALL designate the user by the user `id` (FR-IDN-025). This includes membership operations (FR-ACC-009, FR-ACC-015), the results of the user search (FR-ACC-019), a comment's `author` and an audit log entry's `user`.
+- FR-IDN-027: The IdP user id SHALL remain internal to the system. It SHALL NOT be shown or returned through any project-level operation, in the results of the user search (FR-ACC-019), or through the token reads of FR-AUTH-027.
 - FR-IDN-004: WHEN a user profile is created, the system SHALL copy the user's `name` and `email` from the Identity Provider.
 - FR-IDN-023: The values copied from the Identity Provider under FR-IDN-004 SHALL be accepted without validation, even when they do not satisfy FR-IDN-022 or are absent, with one exception: a value longer than 64 characters SHALL be truncated to its first 64 characters, counted in Unicode code points. An absent value SHALL remain absent. FR-IDN-022 SHALL apply only to edits made in planner. Data supplied by the Identity Provider SHALL never block a login.
 - FR-IDN-005: After the profile is created, the system SHALL NOT read the Identity Provider's profile data again.
@@ -55,15 +59,12 @@ User profile:
 
 | Field | Description | Source |
 |-------|-------------|--------|
-| IdP user id | Identifier provided by the Identity Provider; key of the profile. | IdP |
+| `id` | User `id`: automatic, increasing, numeric identifier; never changed or reused; may have gaps (FR-IDN-025). Designates the user externally (FR-IDN-026). | Assigned by planner at profile creation. |
+| IdP user id | Identifier provided by the Identity Provider; one profile per IdP user id (FR-IDN-003); internal (FR-IDN-027). | IdP |
 | `name` | User name. | Copied from the IdP once, at profile creation; editable in planner. |
 | `email` | User email. | Copied from the IdP once, at profile creation; editable in planner. |
 | `photo` | User photo. | planner only. |
 | `displayname` | Optional planner display name, distinct from `name`; shown instead of `name` when set. | planner only. |
-
-## Constraints
-
-- The Identity Provider vendor is not yet defined ([OQ-013](open-questions.md#oq-013)).
 
 ## Acceptance Criteria
 
@@ -71,7 +72,8 @@ User profile:
 - Given a deactivated user, when they try to log in to the WEBSITE, then login is refused.
 - Given a reactivated user who previously held the `member` role in a project, when they log in, then they hold no role in that project.
 - Given a user whose `name` was copied from the IdP, when the name is edited in planner, then the IdP is not changed.
-- Given a person who has never logged in, then no profile exists for them; when they log in successfully for the first time, then their profile is created.
+- Given a person who has never logged in, then no profile exists for them; when they log in successfully for the first time, then their profile is created with a new user `id` distinct from their IdP user id.
+- Given an `owner` who searches users through the CLI (FR-ACC-019), then each user in the result is designated by the user `id`, and no IdP user id appears in the response.
 - Given a user who is the only `owner` of a project, when an administrator deactivates the user, then the request is refused.
 - Given a deactivated administrator, then the user still holds administrator status and cannot log in.
 - Given a user, when an AI agent tries to edit the user's profile through the CLI, then the request is refused.
@@ -83,7 +85,3 @@ User profile:
 ## Glossary References
 
 [Identity Provider](glossary.md#identity-provider-idp), [User profile](glossary.md#user-profile), [Deactivated user](glossary.md#deactivated-user).
-
-## Open Questions
-
-See [open-questions.md](open-questions.md): OQ-013 (IdP vendor).

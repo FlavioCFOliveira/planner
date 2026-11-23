@@ -70,7 +70,7 @@ Each project has a comments component linked to its Work Items. Comments form th
 | `wiid` | `id` of the Work Item the comment belongs to. | Yes |
 | `kind` | Comment type. | Yes |
 | `text` | Comment content. | Yes |
-| `author` | User who created the comment; set by the system, never changed. | Yes (automatic) |
+| `author` | User who created the comment, designated by the user `id` ([FR-IDN-026](users-and-identity.md#user-profile)); set by the system, never changed. | Yes (automatic) |
 | `createddt` | Date-time of creation, UTC, persisted in UTC ([NFR-DATA-001](overview.md#non-functional-requirements)). | Yes (automatic) |
 | `editeddt` | Date-time of the last edit, UTC, persisted in UTC ([NFR-DATA-001](overview.md#non-functional-requirements)). Empty until the first edit. | Set by the system on edit |
 

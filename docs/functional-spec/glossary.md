@@ -63,7 +63,7 @@ A Work Item type: a problem or failure that makes the software behave differentl
 
 ### `DEVICE-ID`
 
-An identifier of the origin of a request. The CLI generates a random one on installation; the WEBSITE uses the reserved value `GUI`. See [cli-authentication.md](cli-authentication.md#device-id).
+An identifier of the origin of a request. The CLI generates a random one the first time it runs on a device and reuses it afterwards; the WEBSITE uses the reserved value `GUI`. See [cli-authentication.md](cli-authentication.md#device-id).
 
 ### Display name
 
@@ -167,7 +167,7 @@ Coordinated Universal Time. Every date and date-time is persisted in UTC without
 
 ### User profile
 
-The planner record of a user, keyed by the IdP user id and created at the user's first successful login. See [users-and-identity.md](users-and-identity.md#user-profile).
+The planner record of a user, created at the user's first successful login. It is designated by its planner user `id` and linked to the Identity Provider by the IdP user id, which stays internal. See [users-and-identity.md](users-and-identity.md#user-profile).
 
 ### User Story
 

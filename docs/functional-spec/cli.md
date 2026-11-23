@@ -22,7 +22,8 @@ AI agents (primary), operating on behalf of the user to whom the token was issue
 - FR-CLI-003: The CLI SHALL act on behalf of the user to whom its token was issued, including when an AI agent drives it.
 - FR-CLI-004: Every request the CLI sends to the WEB API SHALL carry its `DEVICE-ID` ([cli-authentication.md](cli-authentication.md#device-id)).
 - FR-CLI-005: The CLI SHALL offer every operation the WEBSITE offers, within the permissions of its token, except the operations excluded by FR-CLI-006.
-- FR-CLI-006: The CLI SHALL NOT offer: issuing, listing or revoking tokens; creating or deleting projects; deactivating or reactivating users; granting or removing platform administrator status; editing user profiles; reading the central audit log.
+- FR-CLI-006: The CLI SHALL NOT offer: issuing, listing or revoking tokens; creating or deleting projects; deactivating or reactivating users; granting or removing platform administrator status; editing user profiles; reading the central audit log. The user search for project membership (FR-ACC-019) is a project-membership operation, not user management, and is not excluded.
+- FR-CLI-007: The CLI SHALL run on Linux, macOS and Windows.
 
 ## Non-Functional Requirements
 

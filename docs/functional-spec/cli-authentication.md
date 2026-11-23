@@ -31,7 +31,8 @@ The CLI authenticates with a token issued on the WEBSITE on behalf of the authen
 - FR-AUTH-018: The `read` level SHALL allow only operations that do not change state. The `read+write` level SHALL allow every operation in that project.
 - FR-AUTH-008: WHEN a request is made with a token, the system SHALL limit the token's permissions in the project to what the user's role in that project allows at the time of the request. A user with the `viewer` role is limited to `read`; a user with no role in the project has no permission in it.
 - FR-AUTH-022: WHERE the token's user is a platform administrator at the time of the request, the token's permissions in a project SHALL be exactly its grant for that project, whether or not the administrator holds a role in it.
-- FR-AUTH-019: Tokens SHALL carry per-project permissions only. A token SHALL NOT carry platform-level permissions.
+- FR-AUTH-019: Tokens SHALL carry per-project permissions only. A token SHALL NOT carry platform-level permissions. The only exception is FR-AUTH-027.
+- FR-AUTH-027: The system SHALL allow any valid token (not expired, not revoked, and presented with its matching `DEVICE-ID`, FR-AUTH-011) to read the `photo` and the name to display of any user, whether or not that user holds a role in a project the token covers. The name to display is the one FR-IDN-021 defines: the user's `displayname` when set, otherwise the user's `name`. This exception to FR-AUTH-019 is read-only and covers only those two values; it grants no other access to user profiles or to any project.
 - FR-AUTH-020: WHEN a project is deleted, the system SHALL remove every token permission for that project ([multi-project.md](multi-project.md)).
 
 ### Other WEB API clients
@@ -46,8 +47,8 @@ The CLI authenticates with a token issued on the WEBSITE on behalf of the authen
 
 ### DEVICE-ID
 
-- FR-AUTH-012: WHEN the CLI is installed and no `DEVICE-ID` exists on the device, the CLI SHALL generate one.
-- FR-AUTH-021: WHEN the CLI is installed and a `DEVICE-ID` already exists on the device, the CLI SHALL reuse it, so that tokens issued for that `DEVICE-ID` remain valid.
+- FR-AUTH-012: WHEN the CLI runs and finds no `DEVICE-ID` on the device, the CLI SHALL generate one.
+- FR-AUTH-021: WHEN the CLI runs and finds a `DEVICE-ID` on the device, the CLI SHALL reuse it, so that tokens issued for that `DEVICE-ID` remain valid.
 - FR-AUTH-023: IF a `DEVICE-ID` supplied when issuing a token does not match `[A-Za-z0-9]{24}`, THEN the system SHALL refuse to issue the token. As a consequence, no token can be bound to `GUI`.
 - FR-AUTH-013: The CLI-generated `DEVICE-ID` SHALL be a random string of 24 characters drawn from uppercase letters, lowercase letters and digits, matching `[A-Za-z0-9]{24}`.
 - FR-AUTH-014: The CLI SHALL send its `DEVICE-ID` with every request to the WEB API.
@@ -71,7 +72,7 @@ The CLI authenticates with a token issued on the WEBSITE on behalf of the authen
 
 - Actor: user, on the WEBSITE.
 - Trigger: the user wants the CLI on a device to act on their behalf.
-- Preconditions: the user is authenticated; the CLI is installed on the device and has a `DEVICE-ID`.
+- Preconditions: the user is authenticated; the CLI has run on the device and holds a `DEVICE-ID` there (FR-AUTH-012, FR-AUTH-021).
 - Main flow:
   1. The user supplies the device's `DEVICE-ID`.
   2. For each project the token is to cover, the user chooses `read` or `read+write`.
@@ -88,12 +89,15 @@ Acceptance criteria:
 - Given a revoked token, when it is presented, then the server rejects it.
 - Given a `read+write` token for a project where the user's role was later changed to `viewer`, when the token is used to modify a Work Item, then the request is rejected.
 - Given a `read+write` token held by a `member`, when it is used to configure a Kanban board, then the request is rejected, because board configuration requires the `owner` role.
-- Given a device with an existing `DEVICE-ID` and a valid token, when the CLI is reinstalled, then the token remains valid.
+- Given a device with no `DEVICE-ID`, when the CLI runs, then it generates a `DEVICE-ID` matching `[A-Za-z0-9]{24}`.
+- Given a device with an existing `DEVICE-ID` and a valid token, when the CLI runs again, including after its binary is replaced, then it reuses that `DEVICE-ID` and the token remains valid.
 - Given an administrator with no role in project `p` and a `read+write` token for `p`, when the token is used to modify a Work Item in `p`, then the request is accepted.
 - Given a deactivated user, when they try to issue a token, then the request is refused.
 - Given a user issuing a token, when they request an expiry of 366 days or of 1.5 days, then the token is not issued.
 - Given a third-party client with its own `DEVICE-ID` and a token bound to it, when it calls the WEB API to create a Work Item within the token's permissions, then the request is accepted.
 - Given a third-party client, when it tries to create a project, then the request is refused.
+- Given a valid token that covers only project `p`, and a user with no role in `p` whose `displayname` is `ana`, when the token is used to read that user's `photo` and name to display, then the request is accepted and the name returned is `ana`; when it is used to change that user's `displayname` or to read their `email`, then the request is refused.
+- Given a valid token that covers only project `p`, and a user with no role in `p`, `name` `Ana Silva` and no `displayname`, when the token is used to read that user's name to display, then the name returned is `Ana Silva`.
 
 ## Inputs / Outputs
 
@@ -109,4 +113,4 @@ Token:
 
 ## Glossary References
 
-[Token](glossary.md#token), [`DEVICE-ID`](glossary.md#device-id), [Role](glossary.md#role).
+[Token](glossary.md#token), [`DEVICE-ID`](glossary.md#device-id), [Role](glossary.md#role), [Display name](glossary.md#display-name).

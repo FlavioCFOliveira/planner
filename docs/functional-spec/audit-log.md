@@ -45,7 +45,7 @@ The audit log records which state changes users make, through the WEBSITE or the
 |-------|-------------|
 | `id` | Automatic, increasing numeric identifier; never reused; may have gaps. |
 | `createddt` | Date-time of the operation, UTC, persisted in UTC ([NFR-DATA-001](overview.md#non-functional-requirements)); set by the system. |
-| `user` | User who performed the operation. |
+| `user` | User who performed the operation, designated by the user `id` ([FR-IDN-026](users-and-identity.md#user-profile)). |
 | `deviceid` | `DEVICE-ID` the request came from (`GUI` for the WEBSITE). |
 | `action` | `create`, `modify` or `delete`. |
 | `entity` | Type of object affected (for example `workitem`, `comment`, `tag`, `board`, `sprint`, `release`, `project`). |
